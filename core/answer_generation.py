@@ -62,13 +62,13 @@ class QwenLocalAnswerGenerator(AnswerGenerator):
         question: str,
         context: BuiltContext,
     ) -> GeneratedAnswer:
-        system_instruction = (
-            "You are an AI assistant that answers questions using only the provided context. "
-            "If the answer is not contained in the context, say that the provided context does "
-            "not contain the answer. Do not invent information."
-        )
+        system_instruction = "Answer questions using the provided context."
 
-        user_content = f"Context:\n{context.formatted_text}\n\nQuestion: {question}"
+        user_content = (
+            f"Context:\n{context.formatted_text}\n\n"
+            f"Question: {question}\n\n"
+            "Answer directly."
+        )
 
         messages = [
             {"role": "system", "content": system_instruction},

@@ -110,17 +110,20 @@ def test_qwen_generator_generate_success():
         # Check params
         assert kwargs["temperature"] == generator.temperature
         assert kwargs["max_tokens"] == generator.max_tokens
-
         # Check prompt formatting constraints
         messages = kwargs["messages"]
+
         assert len(messages) == 2
+
         assert messages[0]["role"] == "system"
-        assert "You are an AI assistant" in messages[0]["content"]
-        assert "Do not invent information" in messages[0]["content"]
+        assert messages[0]["content"] == (
+            "Answer questions using the provided context."
+        )
 
         assert messages[1]["role"] == "user"
-        assert "Mock context" in messages[1]["content"]
-        assert "Mock question" in messages[1]["content"]
+        assert "Context:\nMock context" in messages[1]["content"]
+        assert "Question: Mock question" in messages[1]["content"]
+        assert "Answer directly." in messages[1]["content"]
 
 
 def test_qwen_generator_load_error():
