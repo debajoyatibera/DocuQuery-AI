@@ -32,7 +32,7 @@ def test_empty_document(mocks):
     loader.load.return_value = iter([])
 
     service = DocumentIngestionService(loader, chunker, embedder, vector_store)
-    result = service.ingest()
+    result = service.ingest("test-doc-id")
 
     assert result.total_pages == 0
     assert result.total_chunks == 0
@@ -57,7 +57,7 @@ def test_single_page_single_chunk(mocks):
     embedder.embed_texts.return_value = [[0.1, 0.2]]
 
     service = DocumentIngestionService(loader, chunker, embedder, vector_store)
-    result = service.ingest()
+    result = service.ingest("test-doc-id")
 
     assert result.total_pages == 1
     assert result.total_chunks == 1
@@ -72,7 +72,7 @@ def test_single_page_single_chunk(mocks):
     assert kwargs["embeddings"] == [[0.1, 0.2]]
     assert len(kwargs["ids"]) == 1
     assert kwargs["metadatas"] == [
-        {"source": "test.pdf", "page_number": 1, "chunk_index": 0}
+        {"source": "test.pdf", "page_number": 1, "chunk_index": 0, "document_id": "test-doc-id"}
     ]
 
 
@@ -95,7 +95,7 @@ def test_batch_size_logic(mocks):
     service = DocumentIngestionService(
         loader, chunker, embedder, vector_store, batch_size=2
     )
-    result = service.ingest()
+    result = service.ingest("test-doc-id")
 
     assert result.total_pages == 1
     assert result.total_chunks == 5
@@ -146,7 +146,7 @@ def test_multiple_pages_multiple_chunks(mocks):
     service = DocumentIngestionService(
         loader, chunker, embedder, vector_store, batch_size=10
     )
-    result = service.ingest()
+    result = service.ingest("test-doc-id")
 
     assert result.total_pages == 2
     assert result.total_chunks == 3
@@ -158,9 +158,9 @@ def test_multiple_pages_multiple_chunks(mocks):
     assert kwargs["texts"] == ["P1C0", "P2C0", "P2C1"]
 
     meta = kwargs["metadatas"]
-    assert meta[0] == {"source": "multi.pdf", "page_number": 1, "chunk_index": 0}
-    assert meta[1] == {"source": "multi.pdf", "page_number": 2, "chunk_index": 0}
-    assert meta[2] == {"source": "multi.pdf", "page_number": 2, "chunk_index": 1}
+    assert meta[0] == {"source": "multi.pdf", "page_number": 1, "chunk_index": 0, "document_id": "test-doc-id"}
+    assert meta[1] == {"source": "multi.pdf", "page_number": 2, "chunk_index": 0, "document_id": "test-doc-id"}
+    assert meta[2] == {"source": "multi.pdf", "page_number": 2, "chunk_index": 1, "document_id": "test-doc-id"}
 
 
 def test_propagation_of_loader_errors(mocks):
@@ -171,7 +171,7 @@ def test_propagation_of_loader_errors(mocks):
     service = DocumentIngestionService(loader, chunker, embedder, vector_store)
 
     with pytest.raises(Exception, match="Loader crashed"):
-        service.ingest()
+        service.ingest("test-doc-id")
 
 
 def test_propagation_of_embedding_errors(mocks):
@@ -187,7 +187,7 @@ def test_propagation_of_embedding_errors(mocks):
     service = DocumentIngestionService(loader, chunker, embedder, vector_store)
 
     with pytest.raises(Exception, match="Embedder crashed"):
-        service.ingest()
+        service.ingest("test-doc-id")
 
 
 def test_propagation_of_vectorstore_errors(mocks):
@@ -204,4 +204,4 @@ def test_propagation_of_vectorstore_errors(mocks):
     service = DocumentIngestionService(loader, chunker, embedder, vector_store)
 
     with pytest.raises(Exception, match="DB offline"):
-        service.ingest()
+        service.ingest("test-doc-id")

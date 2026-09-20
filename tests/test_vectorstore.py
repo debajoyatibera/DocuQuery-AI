@@ -27,10 +27,10 @@ def test_vectorstore_initialization(vector_store):
 
 def test_generate_chunk_id():
     """Test deterministic SHA-256 ID generation."""
-    id1 = generate_chunk_id("doc.pdf", 1, 0, "Hello")
-    id2 = generate_chunk_id("doc.pdf", 1, 0, "Hello")
-    id3 = generate_chunk_id("doc.pdf", 1, 1, "Hello")
-    id4 = generate_chunk_id("other.pdf", 1, 0, "Hello")
+    id1 = generate_chunk_id("test-doc-id", "doc.pdf", 1, 0, "Hello")
+    id2 = generate_chunk_id("test-doc-id", "doc.pdf", 1, 0, "Hello")
+    id3 = generate_chunk_id("test-doc-id", "doc.pdf", 1, 1, "Hello")
+    id4 = generate_chunk_id("other-doc-id", "doc.pdf", 1, 0, "Hello")
 
     assert isinstance(id1, str)
     assert len(id1) == 64  # SHA-256 hex digest length
@@ -44,7 +44,7 @@ def test_add_and_search_one_document(vector_store):
     texts = ["Test document"]
     embeddings = [[0.1, 0.2, 0.3]]
     metadatas = [{"source": "test.pdf", "page_number": 1, "chunk_index": 0}]
-    ids = [generate_chunk_id("test.pdf", 1, 0, "Test document")]
+    ids = [generate_chunk_id("test-doc-id", "test.pdf", 1, 0, "Test document")]
 
     vector_store.add(texts, embeddings, metadatas, ids)
 

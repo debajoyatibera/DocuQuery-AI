@@ -60,7 +60,7 @@ def test_end_to_end_ingestion_and_retrieval(tmp_path):
             batch_size=32,
         )
 
-        result = service.ingest()
+        result = service.ingest("test-doc-id")
 
         # 1. Verify ingestion result counts
         assert result.total_pages == 2

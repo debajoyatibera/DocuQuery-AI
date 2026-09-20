@@ -53,7 +53,7 @@ def setup_pipeline(tmp_path, mock_pdf_file):
         embedder=embedder,
         vector_store=vector_store,
     )
-    service.ingest()
+    service.ingest("test-doc-id")
 
     retriever = VectorStoreRetriever(
         vector_store=vector_store, embedding_provider=embedder

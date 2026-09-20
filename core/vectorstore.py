@@ -4,14 +4,14 @@ from typing import Any, Dict, List
 
 
 def generate_chunk_id(
-    source: str, page_number: int, chunk_index: int, text: str
+    document_id: str, source: str, page_number: int, chunk_index: int, text: str
 ) -> str:
     """
     Generate a deterministic SHA-256 ID for a document chunk.
     This ensures identical documents generate the same IDs,
     preventing duplicate chunk ingestion.
     """
-    unique_string = f"{source}_{page_number}_{chunk_index}_{text}"
+    unique_string = f"{document_id}_{source}_{page_number}_{chunk_index}_{text}"
     return hashlib.sha256(unique_string.encode("utf-8")).hexdigest()
 
 

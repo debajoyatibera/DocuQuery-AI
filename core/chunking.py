@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 from core.loaders import DocumentPage
 
@@ -16,6 +16,8 @@ class DocumentChunk:
     source: str
     page_number: int
     chunk_index: int
+    document_id: Optional[str] = None
+
 
 
 class TextChunker(ABC):

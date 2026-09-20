@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 class IngestionResult:
     """Summary of a completed document ingestion process."""
 
+    document_id: str
     source: str
     total_pages: int
     total_chunks: int
@@ -43,12 +44,15 @@ class DocumentIngestionService:
         self.vector_store = vector_store
         self.batch_size = batch_size
 
-    def ingest(self) -> IngestionResult:
+    def ingest(self, document_id: str) -> IngestionResult:
         """
         Executes the ingestion pipeline.
         Yields pages, chunks them, and processes chunks in batches to optimize
         embedding and storage operations.
         """
+        if not document_id or not document_id.strip():
+            raise ValueError("document_id cannot be empty or whitespace only.")
+
         total_pages = 0
         total_chunks = 0
         source = "unknown"
@@ -67,6 +71,7 @@ class DocumentIngestionService:
                 continue
 
             for chunk in chunks:
+                chunk.document_id = document_id
                 current_batch.append(chunk)
                 total_chunks += 1
 
@@ -79,6 +84,7 @@ class DocumentIngestionService:
             self._process_batch(current_batch)
 
         return IngestionResult(
+            document_id=document_id,
             source=source,
             total_pages=total_pages,
             total_chunks=total_chunks,
@@ -102,10 +108,12 @@ class DocumentIngestionService:
                     "source": chunk.source,
                     "page_number": chunk.page_number,
                     "chunk_index": chunk.chunk_index,
+                    "document_id": chunk.document_id,
                 }
             )
             # Use the established deterministic ID generation from the vector store layer
             chunk_id = generate_chunk_id(
+                document_id=chunk.document_id,
                 source=chunk.source,
                 page_number=chunk.page_number,
                 chunk_index=chunk.chunk_index,
