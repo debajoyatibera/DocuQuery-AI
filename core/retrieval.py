@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Collection, List, Optional
 
 from core.embeddings import EmbeddingProvider
 from core.vectorstore import VectorStore
@@ -17,7 +17,12 @@ class RetrievedChunk:
 
 class Retriever(ABC):
     @abstractmethod
-    def retrieve(self, query: str, k: int = 4) -> List[RetrievedChunk]:
+    def retrieve(
+        self,
+        query: str,
+        k: int = 4,
+        document_ids: Optional[Collection[str]] = None,
+    ) -> List[RetrievedChunk]:
         """Retrieve top k chunks for the given query."""
         pass
 
@@ -29,12 +34,19 @@ class VectorStoreRetriever(Retriever):
         self._embedding_provider = embedding_provider
         self._vector_store = vector_store
 
-    def retrieve(self, query: str, k: int = 4) -> List[RetrievedChunk]:
+    def retrieve(
+        self,
+        query: str,
+        k: int = 4,
+        document_ids: Optional[Collection[str]] = None,
+    ) -> List[RetrievedChunk]:
         query_stripped = query.strip()
         if not query_stripped:
             raise ValueError("Query cannot be empty or whitespace.")
         if k <= 0:
             raise ValueError("k must be greater than zero.")
+        if document_ids is not None and not document_ids:
+            return []
 
         # Embed query
         embeddings = self._embedding_provider.embed_texts([query_stripped])
@@ -42,7 +54,9 @@ class VectorStoreRetriever(Retriever):
 
         # Search Vector Store
         raw_results = self._vector_store.search(
-            query_embedding=query_embedding, n_results=k
+            query_embedding=query_embedding,
+            n_results=k,
+            document_ids=document_ids,
         )
 
         # Map results

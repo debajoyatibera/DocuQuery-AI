@@ -1,4 +1,4 @@
-from typing import List
+from typing import Collection, List, Optional
 
 import pytest
 
@@ -16,11 +16,20 @@ class FakeRetriever(Retriever):
     def __init__(self, chunks: List[RetrievedChunk] = None):
         self.chunks = chunks or []
         self.received_query = None
+        self.received_document_ids = None
 
-    def retrieve(self, query: str, k: int = 4) -> List[RetrievedChunk]:
+    def retrieve(
+        self,
+        query: str,
+        k: int = 4,
+        document_ids: Optional[Collection[str]] = None,
+    ) -> List[RetrievedChunk]:
         self.received_query = query
+        self.received_document_ids = document_ids
         if query == "trigger_retrieval_error":
             raise ValueError("Retrieval failed")
+        if document_ids is not None and not document_ids:
+            return []
         return self.chunks
 
 
@@ -75,10 +84,12 @@ def test_successful_orchestration():
         retriever=retriever, context_builder=builder, answer_generator=generator
     )
 
-    result = orchestrator.answer("What is X?")
+    document_ids = ["doc-a", "doc-b"]
+    result = orchestrator.answer("What is X?", document_ids=document_ids)
 
     # Verify inputs received by components
     assert retriever.received_query == "What is X?"
+    assert retriever.received_document_ids is document_ids
     assert builder.received_chunks == [chunk1, chunk2]
     assert generator.received_question == "What is X?"
     assert generator.received_context == built_context
@@ -87,6 +98,25 @@ def test_successful_orchestration():
     assert result.answer_text == "Final Answer"
     # Verify we return ONLY context-builder-selected evidence, not all retrieved chunks
     assert result.evidence == [chunk1]
+
+
+def test_empty_document_ids_remain_fail_closed():
+    chunk = create_dummy_chunk("Raw chunk")
+    retriever = FakeRetriever(chunks=[chunk])
+    builder = FakeContextBuilder(
+        context=BuiltContext(formatted_text="", used_chunks=[])
+    )
+    generator = FakeAnswerGenerator()
+    orchestrator = RAGOrchestrator(
+        retriever=retriever, context_builder=builder, answer_generator=generator
+    )
+
+    result = orchestrator.answer("What is X?", document_ids=[])
+
+    assert retriever.received_document_ids == []
+    assert result.answer_text == NO_EVIDENCE_RESPONSE
+    assert result.evidence == []
+    assert generator.received_question is None
 
 
 def test_empty_evidence_short_circuits_generation():

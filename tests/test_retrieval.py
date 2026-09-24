@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Collection, Dict, List, Optional
 
 import pytest
 
@@ -8,12 +8,16 @@ from core.vectorstore import VectorStore
 
 
 class MockEmbeddingProvider(EmbeddingProvider):
+    def __init__(self):
+        self.embed_calls = 0
+
     @property
     def dimension(self) -> int:
         return 3
 
     def embed_texts(self, texts: List[str]) -> List[List[float]]:
         # Just return a dummy embedding for each text
+        self.embed_calls += 1
         return [[0.1, 0.2, 0.3] for _ in texts]
 
 
@@ -22,15 +26,20 @@ class MockVectorStore(VectorStore):
         self.mock_results = mock_results if mock_results is not None else []
         self.last_query_embedding = None
         self.last_n_results = None
+        self.last_document_ids = None
 
     def add(self, texts, embeddings, metadatas, ids):
         pass
 
     def search(
-        self, query_embedding: List[float], n_results: int = 5
+        self,
+        query_embedding: List[float],
+        n_results: int = 5,
+        document_ids: Optional[Collection[str]] = None,
     ) -> List[Dict[str, Any]]:
         self.last_query_embedding = query_embedding
         self.last_n_results = n_results
+        self.last_document_ids = document_ids
         return self.mock_results
 
 
@@ -69,6 +78,29 @@ def test_custom_k():
 
     retriever.retrieve("test query", k=10)
     assert vector_store.last_n_results == 10
+
+
+def test_document_ids_are_forwarded_to_vector_store():
+    embedding_provider = MockEmbeddingProvider()
+    vector_store = MockVectorStore([])
+    retriever = VectorStoreRetriever(embedding_provider, vector_store)
+
+    document_ids = ["doc-a", "doc-b"]
+    retriever.retrieve("test query", document_ids=document_ids)
+
+    assert vector_store.last_document_ids is document_ids
+
+
+def test_empty_document_ids_return_without_embedding():
+    embedding_provider = MockEmbeddingProvider()
+    vector_store = MockVectorStore([])
+    retriever = VectorStoreRetriever(embedding_provider, vector_store)
+
+    results = retriever.retrieve("test query", document_ids=[])
+
+    assert results == []
+    assert embedding_provider.embed_calls == 0
+    assert vector_store.last_query_embedding is None
 
 
 def test_empty_search_result_returns_empty_list():

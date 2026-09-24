@@ -73,6 +73,125 @@ def test_add_multiple_documents(vector_store):
     assert results[0]["distance"] < results[1]["distance"]
 
 
+def test_search_with_one_document_id_returns_only_that_document(vector_store):
+    vector_store.add(
+        texts=["Doc A", "Doc B"],
+        embeddings=[[1.0, 0.0], [0.0, 1.0]],
+        metadatas=[
+            {"source": "A", "document_id": "doc-a"},
+            {"source": "B", "document_id": "doc-b"},
+        ],
+        ids=["id_A", "id_B"],
+    )
+
+    results = vector_store.search(
+        query_embedding=[1.0, 0.0],
+        n_results=2,
+        document_ids=["doc-b"],
+    )
+
+    assert [result["id"] for result in results] == ["id_B"]
+
+
+def test_search_with_multiple_document_ids_returns_only_selected_documents(
+    vector_store,
+):
+    vector_store.add(
+        texts=["Doc A", "Doc B", "Doc C"],
+        embeddings=[[1.0, 0.0], [0.0, 1.0], [-1.0, 0.0]],
+        metadatas=[
+            {"source": "A", "document_id": "doc-a"},
+            {"source": "B", "document_id": "doc-b"},
+            {"source": "C", "document_id": "doc-c"},
+        ],
+        ids=["id_A", "id_B", "id_C"],
+    )
+
+    results = vector_store.search(
+        query_embedding=[1.0, 0.0],
+        n_results=3,
+        document_ids=["doc-a", "doc-c"],
+    )
+
+    assert {result["id"] for result in results} == {"id_A", "id_C"}
+
+
+def test_search_with_empty_document_ids_returns_no_results(vector_store):
+    vector_store.add(
+        texts=["Doc A"],
+        embeddings=[[1.0, 0.0]],
+        metadatas=[{"source": "A", "document_id": "doc-a"}],
+        ids=["id_A"],
+    )
+
+    results = vector_store.search(
+        query_embedding=[1.0, 0.0],
+        n_results=1,
+        document_ids=[],
+    )
+
+    assert results == []
+
+
+def test_search_with_unknown_document_id_returns_no_results(vector_store):
+    vector_store.add(
+        texts=["Doc A"],
+        embeddings=[[1.0, 0.0]],
+        metadatas=[{"source": "A", "document_id": "doc-a"}],
+        ids=["id_A"],
+    )
+
+    results = vector_store.search(
+        query_embedding=[1.0, 0.0],
+        n_results=1,
+        document_ids=["unknown-doc"],
+    )
+
+    assert results == []
+
+
+def test_search_passes_expected_document_filter_to_chroma():
+    class FakeCollection:
+        def __init__(self):
+            self.received_kwargs = None
+
+        def query(self, **kwargs):
+            self.received_kwargs = kwargs
+            return {"ids": [[]]}
+
+    collection = FakeCollection()
+    vector_store = object.__new__(ChromaVectorStore)
+    vector_store.collection = collection
+
+    vector_store.search(
+        query_embedding=[1.0, 0.0],
+        n_results=2,
+        document_ids=["doc-a", "doc-b"],
+    )
+
+    assert collection.received_kwargs["where"] == {
+        "document_id": {"$in": ["doc-a", "doc-b"]}
+    }
+
+
+def test_search_without_document_ids_preserves_unrestricted_query_shape():
+    class FakeCollection:
+        def __init__(self):
+            self.received_kwargs = None
+
+        def query(self, **kwargs):
+            self.received_kwargs = kwargs
+            return {"ids": [[]]}
+
+    collection = FakeCollection()
+    vector_store = object.__new__(ChromaVectorStore)
+    vector_store.collection = collection
+
+    vector_store.search(query_embedding=[1.0, 0.0], n_results=2)
+
+    assert "where" not in collection.received_kwargs
+
+
 def test_empty_inputs(vector_store):
     """Test that empty inputs raise a sensible ValueError."""
     with pytest.raises(ValueError, match="cannot be empty"):

@@ -76,6 +76,29 @@ def show_processed_documents(processed_documents: Dict[str, Dict[str, Any]]) -> 
         )
 
 
+def document_display_labels(
+    processed_documents: Dict[str, Dict[str, Any]],
+) -> Dict[str, str]:
+    source_counts: Dict[str, int] = {}
+    for document in processed_documents.values():
+        source = document["source"]
+        source_counts[source] = source_counts.get(source, 0) + 1
+
+    labels: Dict[str, str] = {}
+    for document_id, document in processed_documents.items():
+        source = document["source"]
+        label = source
+        if source_counts[source] > 1:
+            prefix_length = 8
+            label = f"{source} ({document_id[:prefix_length]})"
+            while label in labels.values() and prefix_length < len(document_id):
+                prefix_length += 4
+                label = f"{source} ({document_id[:prefix_length]})"
+        labels[document_id] = label
+
+    return labels
+
+
 def ingest_uploaded_files(uploaded_files: list[Any]) -> None:
     processed_documents = st.session_state.processed_documents
 
@@ -129,6 +152,8 @@ def ingest_uploaded_files(uploaded_files: list[Any]) -> None:
                 "total_pages": result.total_pages,
                 "total_chunks": result.total_chunks,
             }
+            if document_id not in st.session_state.selected_document_ids:
+                st.session_state.selected_document_ids.append(document_id)
             st.success(
                 f"Indexed {file_name}: "
                 f"{result.total_chunks} chunks from {result.total_pages} pages."
@@ -154,6 +179,14 @@ def main() -> None:
 
     if "processed_documents" not in st.session_state:
         st.session_state.processed_documents = {}
+    if "selected_document_ids" not in st.session_state:
+        st.session_state.selected_document_ids = []
+
+    st.session_state.selected_document_ids = [
+        document_id
+        for document_id in st.session_state.selected_document_ids
+        if document_id in st.session_state.processed_documents
+    ]
 
     model_path = os.environ.get("DOCUQUERY_QWEN_MODEL_PATH", "").strip()
     model_available = bool(model_path) and os.path.isfile(model_path) and os.access(
@@ -181,6 +214,16 @@ def main() -> None:
     if uploaded_files and st.button("Index documents", type="primary"):
         ingest_uploaded_files(uploaded_files)
 
+    if st.session_state.processed_documents:
+        labels = document_display_labels(st.session_state.processed_documents)
+        selected_document_ids = st.multiselect(
+            "Select documents for questions",
+            options=list(st.session_state.processed_documents),
+            default=st.session_state.selected_document_ids,
+            format_func=lambda document_id: labels[document_id],
+        )
+        st.session_state.selected_document_ids = selected_document_ids
+
     question = st.chat_input(
         "Ask a question about your indexed documents",
         disabled=not model_available,
@@ -196,9 +239,22 @@ def main() -> None:
         st.info("Upload and index at least one PDF before asking a question.")
         return
 
+    selected_document_ids = [
+        document_id
+        for document_id in st.session_state.selected_document_ids
+        if document_id in st.session_state.processed_documents
+    ]
+    st.session_state.selected_document_ids = selected_document_ids
+    if not selected_document_ids:
+        st.info("Select at least one document before asking a question.")
+        return
+
     try:
         orchestrator = get_orchestrator(model_path)
-        result = orchestrator.answer(question)
+        result = orchestrator.answer(
+            question,
+            document_ids=selected_document_ids,
+        )
     except GenerationError:
         st.error("The local Qwen model could not generate an answer.")
         return

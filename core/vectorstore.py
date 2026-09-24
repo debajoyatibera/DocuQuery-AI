@@ -1,6 +1,6 @@
 import hashlib
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any, Collection, Dict, List, Optional
 
 
 def generate_chunk_id(
@@ -38,7 +38,10 @@ class VectorStore(ABC):
 
     @abstractmethod
     def search(
-        self, query_embedding: List[float], n_results: int = 5
+        self,
+        query_embedding: List[float],
+        n_results: int = 5,
+        document_ids: Optional[Collection[str]] = None,
     ) -> List[Dict[str, Any]]:
         """
         Search the vector store using the query embedding.
@@ -91,18 +94,28 @@ class ChromaVectorStore(VectorStore):
         )
 
     def search(
-        self, query_embedding: List[float], n_results: int = 5
+        self,
+        query_embedding: List[float],
+        n_results: int = 5,
+        document_ids: Optional[Collection[str]] = None,
     ) -> List[Dict[str, Any]]:
         if not query_embedding:
             raise ValueError("query_embedding cannot be empty.")
         if n_results <= 0:
             raise ValueError("n_results must be greater than zero.")
+        if document_ids is not None and not document_ids:
+            return []
 
         # query expects a list of query embeddings
-        results = self.collection.query(
-            query_embeddings=[query_embedding],
-            n_results=n_results,
-        )
+        query_kwargs = {
+            "query_embeddings": [query_embedding],
+            "n_results": n_results,
+        }
+        if document_ids is not None:
+            query_kwargs["where"] = {
+                "document_id": {"$in": list(document_ids)}
+            }
+        results = self.collection.query(**query_kwargs)
 
         formatted_results = []
 

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import Collection, List, Optional
 
 from core.answer_generation import AnswerGenerator
 from core.context import ContextBuilder
@@ -25,7 +25,11 @@ class RAGOrchestrator:
         self.context_builder = context_builder
         self.answer_generator = answer_generator
 
-    def answer(self, question: str) -> OrchestrationResult:
+    def answer(
+        self,
+        question: str,
+        document_ids: Optional[Collection[str]] = None,
+    ) -> OrchestrationResult:
         """
         Coordinates retrieval, context building, and answer generation.
         """
@@ -35,7 +39,9 @@ class RAGOrchestrator:
         clean_question = question.strip()
 
         # 1. Retrieve raw chunks
-        retrieved_chunks = self.retriever.retrieve(clean_question)
+        retrieved_chunks = self.retriever.retrieve(
+            clean_question, document_ids=document_ids
+        )
 
         # 2. Build constrained context
         built_context = self.context_builder.build(retrieved_chunks)
