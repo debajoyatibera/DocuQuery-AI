@@ -1,0 +1,3 @@
+# README: This initial Vercel deployment boundary is intentionally dependency-free.
+# The health-check API uses only Python standard-library modules.
+# Add third-party dependencies here only when the backend contract requires them.
