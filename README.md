@@ -67,4 +67,5 @@ python -m streamlit run app.py --server.address 0.0.0.0 --server.port 8501
 The project is prepared for a deployment or portfolio demonstration, but it is
 not publicly deployed by this repository. A deployment should provide the
 runtime dependencies, a readable local model path, persistent storage, and an
-appropriate access-control strategy.
+appropriate access-control strategy. This GitHub repository is the source of
+truth for the project.
