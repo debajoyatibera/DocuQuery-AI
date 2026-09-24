@@ -175,7 +175,10 @@ def main() -> None:
     )
 
     st.title("DocuQuery AI")
-    st.caption("Upload PDF documents and ask questions about their contents.")
+    st.caption(
+        "A local document question-answering workspace with scoped retrieval "
+        "and source evidence."
+    )
 
     if "processed_documents" not in st.session_state:
         st.session_state.processed_documents = {}
@@ -206,8 +209,9 @@ def main() -> None:
 
     show_processed_documents(st.session_state.processed_documents)
 
+    st.subheader("Upload PDF documents")
     uploaded_files = st.file_uploader(
-        "Upload PDF documents",
+        "Choose one or more PDF files",
         type=["pdf"],
         accept_multiple_files=True,
     )
@@ -215,6 +219,7 @@ def main() -> None:
         ingest_uploaded_files(uploaded_files)
 
     if st.session_state.processed_documents:
+        st.subheader("Select documents")
         labels = document_display_labels(st.session_state.processed_documents)
         selected_document_ids = st.multiselect(
             "Select documents for questions",
@@ -224,6 +229,7 @@ def main() -> None:
         )
         st.session_state.selected_document_ids = selected_document_ids
 
+    st.subheader("Ask a question")
     question = st.chat_input(
         "Ask a question about your indexed documents",
         disabled=not model_available,
